@@ -28,6 +28,32 @@ rescue LoadError
   puts "libxml gem in not installed, run 'gem install libxml-ruby'"
 end
 
+def ox_to_hash( el , parent )
+  return unless el
+
+  element = el.value
+  value =
+    if el.nodes.size == 1 && !el.nodes[0].is_a?(Ox::Element)
+      el.nodes[0]
+    else
+      container = {}
+      el.nodes.each do |child|
+        ox_to_hash(child, container)
+      end
+      container
+    end
+
+  parent_value = parent[element]
+  case parent_value
+  when nil
+    parent[element] = value
+  when Hash
+    parent[element] = [parent_value, value]
+  when Array
+    parent[element] << value
+  end
+end
+
 
 def benchmark(runs, xml)
   label_width = 25 # needs to be >= any label's size
@@ -58,6 +84,12 @@ def benchmark(runs, xml)
 
     x.report 'xmlhasher' do
       runs.times { XmlHasher.parse(xml) }
+    end
+
+    x.report 'ox(custom)' do
+      runs.times {
+        ox_to_hash(Ox.parse(xml), {})
+      }
     end
   end
 end
